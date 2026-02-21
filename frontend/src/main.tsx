@@ -48,6 +48,15 @@ const router = createBrowserRouter([
         },
       },
       {
+        path: "/track-demo",
+        lazy: async () => {
+          const { default: TrackDemoPage } = await import(
+            "./pages/TrackDemoPage"
+          );
+          return { Component: TrackDemoPage };
+        },
+      },
+      {
         path: "/create-split",
         lazy: async () => {
           const { SplitCreationWizard } = await import(
