@@ -1,4 +1,4 @@
-use soroban_sdk::{Address, Env, Symbol};
+use soroban_sdk::{Address, Env, String, Symbol};
 
 use crate::types::Split;
 
@@ -30,4 +30,9 @@ pub fn emit_fees_collected(env: &Env, amount: i128, treasury: &Address) {
         (Symbol::new(env, "FeesCollected"),),
         (amount, treasury.clone()),
     );
+}
+
+pub fn emit_note_updated(env: &Env, split_id: u64, note: &String) {
+    env.events()
+        .publish(("NoteUpdated", "split_id"), (split_id, note.clone()));
 }

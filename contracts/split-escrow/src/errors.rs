@@ -13,4 +13,6 @@ pub enum Error {
     SplitNotReady = 8,
     TreasuryNotSet = 9,
     ParticipantCapExceeded = 10,
+    InvalidInput = 11,
+    EscrowNotActive = 12,
 }
