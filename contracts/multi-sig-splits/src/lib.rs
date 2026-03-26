@@ -107,6 +107,11 @@ impl MultisigSplitsContract {
             return Err(MultisigError::SplitNotActive);
         }
 
+        // If an authorized signer set exists, enforce membership.
+        if split.signers.len() > 0 && !storage::is_signer(&env, &split_id, &signer) {
+            return Err(MultisigError::InvalidSigner);
+        }
+
         // Check if signer has already signed
         if storage::has_signed(&env, &split_id, &signer) {
             return Err(MultisigError::AlreadySigned);

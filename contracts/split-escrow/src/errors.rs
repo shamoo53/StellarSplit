@@ -15,8 +15,9 @@ pub enum Error {
     ParticipantCapExceeded = 10,
     // Money-critical/upgrade failures are asserted by numeric code in tests.
     InvalidVersion = 11,
-    EscrowNotActive = 12,
-    InvalidMetadata = 13,
+    InvalidInput = 12,
+    EscrowNotActive = 13,
+    /// Split is already finalized (released or cancelled) or otherwise not active.
     SplitNotActive = 14,
-    InvalidInput = 15,
+    InvalidMetadata = 15,
 }

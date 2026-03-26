@@ -5,6 +5,11 @@ use soroban_sdk::{symbol_short, Address, Env, String, Symbol, Vec};
 
 /// Storage keys
 const ADMIN: Symbol = symbol_short!("ADMIN");
+const SIGNED: Symbol = symbol_short!("SIGNED");
+
+fn signed_key(split_id: &String, signer: &Address) -> (Symbol, String, Address) {
+    (SIGNED, split_id.clone(), signer.clone())
+}
 
 /// Set the admin address
 pub fn set_admin(env: &Env, admin: &Address) {
@@ -38,13 +43,9 @@ pub fn save_split(env: &Env, split: &MultisigSplit) {
 
 /// Check if an address has signed a split
 pub fn has_signed(env: &Env, split_id: &String, signer: &Address) -> bool {
-    let split = get_split(env, split_id);
-    for i in 0..split.signed_signers.len() {
-        if &split.signed_signers.get(i).unwrap() == signer {
-            return true;
-        }
-    }
-    false
+    env.storage()
+        .persistent()
+        .has(&signed_key(split_id, signer))
 }
 
 /// Check if an address is an authorized signer
@@ -61,23 +62,10 @@ pub fn is_signer(env: &Env, split_id: &String, signer: &Address) -> bool {
 /// Add a signature to a split
 pub fn add_signature(env: &Env, split_id: &String, signer: &Address) {
     let mut split = get_split(env, split_id);
-    // Record the signature in the dedicated signature set.
-    split.signed_signers.push_back(signer.clone());
     split.current_signatures += 1;
-
-    // For compatibility with existing tests, if nobody called `add_signer` yet,
-    // treat a first signature as implicit authorization.
-    let mut already_authorized = false;
-    for i in 0..split.signers.len() {
-        if &split.signers.get(i).unwrap() == signer {
-            already_authorized = true;
-            break;
-        }
-    }
-    if !already_authorized {
-        split.signers.push_back(signer.clone());
-    }
-
+    env.storage()
+        .persistent()
+        .set(&signed_key(split_id, signer), &true);
     save_split(env, &split);
 }
 
@@ -108,29 +96,22 @@ pub fn remove_signer(env: &Env, split_id: &String, signer: &Address) -> Result<(
         return Err(MultisigError::CannotRemoveLastSigner);
     }
 
-    // Remove from authorized signers, and also remove/undo any collected signature
-    // for that signer.
+    // Find and remove the signer; undo their signature if they had signed.
     let mut found = false;
     let mut new_signers = Vec::new(env);
-    let mut new_signed = Vec::new(env);
     for i in 0..split.signers.len() {
         let s = split.signers.get(i).unwrap();
         if &s == signer {
             found = true;
-        } else {
-            new_signers.push_back(s);
-        }
-    }
-
-    for i in 0..split.signed_signers.len() {
-        let s = split.signed_signers.get(i).unwrap();
-        if &s == signer {
-            // Undo signature accounting.
-            if split.current_signatures > 0 {
+            // Decrement current signatures only if this signer had signed.
+            if has_signed(env, split_id, signer) && split.current_signatures > 0 {
                 split.current_signatures -= 1;
+                env.storage()
+                    .persistent()
+                    .remove(&signed_key(split_id, signer));
             }
         } else {
-            new_signed.push_back(s);
+            new_signers.push_back(s);
         }
     }
 
@@ -139,7 +120,11 @@ pub fn remove_signer(env: &Env, split_id: &String, signer: &Address) -> Result<(
     }
 
     split.signers = new_signers;
-    split.signed_signers = new_signed;
+
+    // Adjust threshold if needed
+    if split.required_signatures > split.signers.len() as u32 {
+        split.required_signatures = split.signers.len() as u32;
+    }
 
     save_split(env, &split);
     Ok(())
