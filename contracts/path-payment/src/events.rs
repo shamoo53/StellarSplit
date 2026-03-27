@@ -41,13 +41,7 @@ pub fn emit_pair_registered(env: &Env, from: &Address, to: &Address) {
         .publish((symbol_short!("pair_reg"),), (from.clone(), to.clone()));
 }
 
-pub fn emit_swap_failed(
-    env: &Env,
-    from: &Address,
-    to: &Address,
-    amount_in: i128,
-    reason: &str,
-) {
+pub fn emit_swap_failed(env: &Env, from: &Address, to: &Address, amount_in: i128, reason: &str) {
     env.events().publish(
         (symbol_short!("swap_err"),),
         (

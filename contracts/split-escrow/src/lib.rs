@@ -311,8 +311,6 @@ impl SplitEscrowContract {
         Ok(())
     }
 
-
-
     /// Alias for cancellation that matches the dispute contract's "reverse_split" concept.
     pub fn reverse_split(env: Env, split_id: u64) -> Result<(), Error> {
         Self::cancel_split(env, split_id)
