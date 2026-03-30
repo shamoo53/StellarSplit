@@ -1,16 +1,24 @@
-import { Controller, Post, Get, Put, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Put, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
 import { ComplianceService } from './compliance.service';
 import { ExpenseCategory } from './entities/expense-category.entity';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AuthorizationGuard } from '../auth/guards/authorization.guard';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+
+interface AuthRequest {
+  user: { walletAddress: string };
+}
 
 @Controller('api/compliance')
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class ComplianceController {
     constructor(private readonly complianceService: ComplianceService) { }
 
     @Post('export/request')
-    async requestExport(@Body() data: any) {
-        // In a real app, userId would come from auth guard
-        const userId = data.userId;
-        return this.complianceService.requestExport(userId, data);
+    @RequirePermissions(Permissions.CAN_CREATE_EXPORT)
+    async requestExport(@Body() data: any, @Req() req: AuthRequest) {
+        return this.complianceService.requestExport(req.user.walletAddress, data);
     }
 
     @Get('export/:requestId/status')
@@ -19,14 +27,15 @@ export class ComplianceController {
     }
 
     @Get('categories')
-    async getCategories(@Query('userId') userId: string) {
-        return this.complianceService.getCategories(userId);
+    @RequirePermissions(Permissions.CAN_READ_EXPORT)
+    async getCategories(@Req() req: AuthRequest) {
+        return this.complianceService.getCategories(req.user.walletAddress);
     }
 
     @Post('categories')
-    async createCategory(@Body() data: any) {
-        const userId = data.userId;
-        return this.complianceService.createCategory(userId, data);
+    @RequirePermissions(Permissions.CAN_CREATE_EXPORT)
+    async createCategory(@Body() data: any, @Req() req: AuthRequest) {
+        return this.complianceService.createCategory(req.user.walletAddress, data);
     }
 
     @Put('splits/:splitId/category')
