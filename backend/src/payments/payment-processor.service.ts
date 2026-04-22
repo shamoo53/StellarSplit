@@ -104,6 +104,34 @@ export class PaymentProcessorService {
     return crypto.createHash("sha256").update(payload).digest("hex");
   }
 
+  private resolveSplitDeadline(split: Partial<Split>, processedAt: Date): Date {
+    const directDeadline = split.dueDate ?? split.expiryDate;
+    if (directDeadline instanceof Date) {
+      return directDeadline;
+    }
+
+    if (typeof directDeadline === "string" || typeof directDeadline === "number") {
+      const parsedDeadline = new Date(directDeadline);
+      if (!Number.isNaN(parsedDeadline.getTime())) {
+        return parsedDeadline;
+      }
+    }
+
+    const createdAt = split.createdAt;
+    if (createdAt instanceof Date) {
+      return new Date(createdAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+    }
+
+    if (typeof createdAt === "string" || typeof createdAt === "number") {
+      const parsedCreatedAt = new Date(createdAt);
+      if (!Number.isNaN(parsedCreatedAt.getTime())) {
+        return new Date(parsedCreatedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+      }
+    }
+
+    return processedAt;
+  }
+
   /**
    * Process a payment submission with idempotency and transaction support
    * @param options Payment processing options
@@ -332,10 +360,7 @@ export class PaymentProcessorService {
 
       // Record reputation only when transitioning to fully paid (to avoid double counting).
       if (participantStatus === "paid" && !wasFullyPaidBefore) {
-        const deadline =
-          (split as any).dueDate ??
-          (split as any).expiryDate ??
-          new Date((split as any).createdAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+        const deadline = this.resolveSplitDeadline(split, processedAt);
 
         const eventType =
           processedAt.getTime() <= deadline.getTime()
