@@ -2,9 +2,7 @@
 
 use crate::{SplitEscrowContract, SplitEscrowContractClient, SplitStatus};
 use soroban_sdk::token::{Client as TokenClient, StellarAssetClient as TokenAdminClient};
-use soroban_sdk::{
-    testutils::Address as _, testutils::Events as _, Address, Env, Map, String,
-};
+use soroban_sdk::{testutils::Address as _, testutils::Events as _, Address, Env, Map, String};
 
 fn metadata_map(env: &Env, entries: &[(&str, &str)]) -> Map<String, String> {
     let mut metadata = Map::new(env);
